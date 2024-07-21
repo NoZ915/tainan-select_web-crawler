@@ -2,13 +2,15 @@ import "dotenv/config";
 import axios from "axios";
 import express from "express";
 import cheerio from "cheerio";
+import mongoose from "mongoose";
 
-import googleRequestCURL from "./utils/googleRequestCURL.js"
+import {googleRequestCURL} from "./utils/googleRequestCURL.js"
+import Course from "./models/courseModel.js";
 
 const app = express();
 const courses = [];
 
-// 抓111-2年
+// 抓資料
 axios.post(
   'https://ecourse.nutn.edu.tw/public/tea_preview_list.aspx',
   // 前端發request才能得到我們要的表單資料（才能得到正確年份）
@@ -63,9 +65,40 @@ axios.post(
     };
     formattedData.push(course);
   }
-  console.log(formattedData);
+  // console.log(formattedData);
+  formattedData.forEach(async (course) => {
+    await Course.findOneAndUpdate(
+      {
+        department: course.department,
+        courseName: course.courseName,
+        instructor: course.instructor,
+      },
+      {
+        $set: 
+        {
+          semester: course.semester,
+          academy: course.academy,
+          department: course.department,
+          courseName: course.courseName,
+          courseURL: course.courseURL,
+          instructor: course.instructor,
+          instructorURL: course.instructorURL,
+          creditHours: course.creditHours,
+        }
+      },
+      {
+        upsert: true, new: true, setDefaultsOnInsert: true
+      }
+    )
+  })
 })
 
-app.listen(process.env.PORT, () => {
-  console.log(`listen to PORT ${process.env.PORT}`);
-})
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => {
+    app.listen(process.env.PORT, () => {
+      console.log(`listen to PORT ${process.env.PORT}`);
+    })
+  })
+  .catch((error) => {
+    console.log(error);
+  })
