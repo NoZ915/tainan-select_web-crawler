@@ -33,6 +33,14 @@ const CourseSchema = new mongoose.Schema({
         type: String,
         require: true
     },
+    courseTime: {
+        type: String,
+        require: true
+    },
+    courseRoom: {
+        type: String,
+        require: true
+    }
 }, {timestamps: true})
 
 const Course = mongoose.model("Course", CourseSchema);

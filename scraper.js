@@ -1,10 +1,10 @@
 import "dotenv/config";
 import axios from "axios";
 import express from "express";
-import cheerio from "cheerio";
+import * as cheerio from 'cheerio';
 import mongoose from "mongoose";
 
-import {googleRequestCURL} from "./utils/googleRequestCURL.js"
+import { googleRequestCURL } from "./utils/googleRequestCURL.js"
 import Course from "./models/courseModel.js";
 
 const app = express();
@@ -47,6 +47,7 @@ axios.post(
       courses.push($(this).find("a").attr("href"));
     }
   })
+
   // cheerio取得學期
   const semester = $("#label_title2").text().replace(/[^0-9]/ig, "");
 
@@ -65,32 +66,56 @@ axios.post(
     };
     formattedData.push(course);
   }
-  // console.log(formattedData);
-  formattedData.forEach(async (course) => {
-    await Course.findOneAndUpdate(
-      {
-        department: course.department,
-        courseName: course.courseName,
-        instructor: course.instructor,
-      },
-      {
-        $set: 
+
+  // 針對每一個course，都進到各自對應的courseURL進行爬蟲
+  const promises = formattedData.map(async (course) => {
+    try {
+      const res = await axios.get(course.courseURL);
+      const coursePage$ = cheerio.load(res.data);
+
+      // 抓取課程頁面中的資料
+      const courseTime = coursePage$('#Label10').text();
+      const courseRoom = coursePage$('#Label11').text();
+
+      // 更新/插入資料庫
+      await Course.findOneAndUpdate(
         {
-          semester: course.semester,
-          academy: course.academy,
           department: course.department,
           courseName: course.courseName,
-          courseURL: course.courseURL,
           instructor: course.instructor,
-          instructorURL: course.instructorURL,
-          creditHours: course.creditHours,
+        },
+        {
+          $set:
+          {
+            semester: course.semester,
+            academy: course.academy,
+            department: course.department,
+            courseName: course.courseName,
+            courseURL: course.courseURL,
+            instructor: course.instructor,
+            instructorURL: course.instructorURL,
+            creditHours: course.creditHours,
+            courseTime: courseTime,
+            courseRoom: courseRoom
+          }
+        },
+        {
+          upsert: true, new: true, setDefaultsOnInsert: true
         }
-      },
-      {
-        upsert: true, new: true, setDefaultsOnInsert: true
-      }
-    )
-  })
+      )
+    } catch (error) {
+      console.error(`Error fetching course URL ${course.courseURL}, ${course.courseName}`);
+    }
+  });
+
+  // 等待所有的Promise完成
+  Promise.all(promises)
+    .then(() => {
+      console.log('All courses have been updated.');
+    })
+    .catch(error => {
+      console.error('Error updating courses.');
+    });
 })
 
 mongoose.connect(process.env.MONGO_URI)
@@ -100,5 +125,5 @@ mongoose.connect(process.env.MONGO_URI)
     })
   })
   .catch((error) => {
-    console.log(error);
+    console.log('Can not listen to PORT');
   })
