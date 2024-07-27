@@ -1,7 +1,15 @@
 # Tainan Select 爬蟲
 [Note](https://hackmd.io/@noz915/H1Ggmo1u0)
 
+**注意：** 
+在爬新資料時，務必確認爬的新資料的學期是最新的，否則當遇到重複課程時，semester欄位以及courseURL欄位會被舊的資料給取代更新掉。（目前還沒有寫判斷式來判斷哪個學期是比較新的）
+
 ****
+## Step 0
+1. 先`npm i`，下載好package
+2. 重新建立一份.env檔案，並依照.env.example格式完成所需要的內容：
+   * PORT
+   * MONGO_URI
 
 ## Step 1
 1. 選擇好要爬得學期
@@ -29,6 +37,7 @@
 
 ## Step 5
 回到專案的utils資料夾底下的googleRequestCURL.js檔案中，將Step 4複製的部份貼到cURL變數後方作為他的值。
-執行後便會將該學期的課程大綱更新、插入至database中。
+執行`npm run dev`後便會將該學期的課程大綱更新、插入至database中。
+有時候（可能網路問題）不會把整學期的資料都爬下來，可以多執行幾次
 
 ![image](./img/5.jpeg)
